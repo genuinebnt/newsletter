@@ -1,7 +1,13 @@
 package api
 
 import (
+	"context"
+	"log"
+	"time"
+
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 type Form struct {
@@ -10,9 +16,16 @@ type Form struct {
 }
 
 func Subscribe(c *gin.Context) {
+	db := c.MustGet("db").(*pgx.Conn)
+
 	var form Form
-	err := c.Bind(&form)
-	if err == nil {
-		c.JSON(200, gin.H{"name": form.Name, "email": form.Email})
+	_ = c.Bind(&form)
+
+	id, err := uuid.NewRandom()
+	if err != nil {
+		log.Println(err)
+		return
 	}
+	_, err = db.Exec(context.Background(), "INSERT INTO subscriptions (id, email, name, subscribed_at) VALUES ($1, $2, $3, $4)", id, form.Email, form.Name, time.Now().UTC())
+	log.Println(err)
 }

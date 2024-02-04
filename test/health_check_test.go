@@ -15,7 +15,20 @@ import (
 )
 
 func TestHealthCheck(t *testing.T) {
-	server := httptest.NewServer(lib.Server())
+	config, err := config.GetConfiguration()
+	if err != nil {
+		log.Fatalln("Failed to read configuration: ", err)
+	}
+
+	connectionString := config.Database.ConnectionString()
+
+	conn, err := pgx.Connect(context.Background(), connectionString)
+	if err != nil {
+		log.Fatalln("Failed to connect to database: ", err)
+	}
+	defer conn.Close(context.Background())
+
+	server := httptest.NewServer(lib.Server(conn))
 	defer server.Close()
 
 	resp, err := http.Get(server.URL + "/health_check")
@@ -29,15 +42,6 @@ func TestHealthCheck(t *testing.T) {
 
 func TestSubscribe(t *testing.T) {
 	t.Run("Subscriber returns 200 for a valid form data", func(t *testing.T) {
-		server := httptest.NewServer(lib.Server())
-		defer server.Close()
-
-		body := "name=genuine%20basil%20nt&email=genuinebnt%40gmail.com"
-		resp, err := http.Post(server.URL+"/subscriptions", "application/x-www-form-urlencoded", strings.NewReader(body))
-		if err != nil {
-			log.Fatalln("Failed to execute http request with err", err)
-		}
-
 		config, err := config.GetConfiguration()
 		if err != nil {
 			log.Fatalln("Failed to read configuration: ", err)
@@ -50,6 +54,15 @@ func TestSubscribe(t *testing.T) {
 			log.Fatalln("Failed to connect to database: ", err)
 		}
 		defer conn.Close(context.Background())
+
+		server := httptest.NewServer(lib.Server(conn))
+		defer server.Close()
+
+		body := "name=genuine%20basil%20nt&email=genuinebnt%40gmail.com"
+		resp, err := http.Post(server.URL+"/subscriptions", "application/x-www-form-urlencoded", strings.NewReader(body))
+		if err != nil {
+			log.Fatalln("Failed to execute http request with err", err)
+		}
 
 		var name string
 		var email string
@@ -65,7 +78,20 @@ func TestSubscribe(t *testing.T) {
 	})
 
 	t.Run("Subscriber returns 400 when data is missing", func(t *testing.T) {
-		server := httptest.NewServer(lib.Server())
+		config, err := config.GetConfiguration()
+		if err != nil {
+			log.Fatalln("Failed to read configuration: ", err)
+		}
+
+		connectionString := config.Database.ConnectionString()
+
+		conn, err := pgx.Connect(context.Background(), connectionString)
+		if err != nil {
+			log.Fatalln("Failed to connect to database: ", err)
+		}
+		defer conn.Close(context.Background())
+
+		server := httptest.NewServer(lib.Server(conn))
 		defer server.Close()
 
 		var testCases = []struct {
