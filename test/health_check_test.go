@@ -1,6 +1,8 @@
 package test
 
 import (
+	"context"
+	"genuinebnt/newsletter/config"
 	lib "genuinebnt/newsletter/internal"
 	"log"
 	"net/http"
@@ -8,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,7 +24,7 @@ func TestHealthCheck(t *testing.T) {
 	}
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	assert.Equal(t, int64(0), resp.ContentLength)
+	assert.Equal(t, resp.ContentLength, int64(0))
 }
 
 func TestSubscribe(t *testing.T) {
@@ -35,7 +38,30 @@ func TestSubscribe(t *testing.T) {
 			log.Fatalln("Failed to execute http request with err", err)
 		}
 
+		config, err := config.GetConfiguration()
+		if err != nil {
+			log.Fatalln("Failed to read configuration: ", err)
+		}
+
+		connectionString := config.Database.ConnectionString()
+
+		conn, err := pgx.Connect(context.Background(), connectionString)
+		if err != nil {
+			log.Fatalln("Failed to connect to database: ", err)
+		}
+		defer conn.Close(context.Background())
+
+		var name string
+		var email string
+		err = conn.QueryRow(context.Background(), "SELECT email, name from subscriptions;").Scan(&email, &name)
+		if err != nil {
+			log.Fatalln("Failed to fetch subscriptions: ", err)
+		}
+
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		assert.Equal(t, name, "genuine basil nt")
+		assert.Equal(t, email, "genuinebnt@gmail.com")
 	})
 
 	t.Run("Subscriber returns 400 when data is missing", func(t *testing.T) {
