@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,13 +22,13 @@ func TestHealthCheck(t *testing.T) {
 
 	connectionString := config.Database.ConnectionString()
 
-	conn, err := pgx.Connect(context.Background(), connectionString)
+	dbpool, err := pgxpool.New(context.Background(), connectionString)
 	if err != nil {
 		log.Fatalln("Failed to connect to database: ", err)
 	}
-	defer conn.Close(context.Background())
+	defer dbpool.Close()
 
-	server := httptest.NewServer(lib.Server(conn))
+	server := httptest.NewServer(lib.Server(dbpool))
 	defer server.Close()
 
 	resp, err := http.Get(server.URL + "/health_check")
@@ -49,13 +49,13 @@ func TestSubscribe(t *testing.T) {
 
 		connectionString := config.Database.ConnectionString()
 
-		conn, err := pgx.Connect(context.Background(), connectionString)
+		dbpool, err := pgxpool.New(context.Background(), connectionString)
 		if err != nil {
 			log.Fatalln("Failed to connect to database: ", err)
 		}
-		defer conn.Close(context.Background())
+		defer dbpool.Close()
 
-		server := httptest.NewServer(lib.Server(conn))
+		server := httptest.NewServer(lib.Server(dbpool))
 		defer server.Close()
 
 		body := "name=genuine%20basil%20nt&email=genuinebnt%40gmail.com"
@@ -66,7 +66,7 @@ func TestSubscribe(t *testing.T) {
 
 		var name string
 		var email string
-		err = conn.QueryRow(context.Background(), "SELECT email, name from subscriptions;").Scan(&email, &name)
+		err = dbpool.QueryRow(context.Background(), "SELECT email, name from subscriptions;").Scan(&email, &name)
 		if err != nil {
 			log.Fatalln("Failed to fetch subscriptions: ", err)
 		}
@@ -85,13 +85,13 @@ func TestSubscribe(t *testing.T) {
 
 		connectionString := config.Database.ConnectionString()
 
-		conn, err := pgx.Connect(context.Background(), connectionString)
+		dbpool, err := pgxpool.New(context.Background(), connectionString)
 		if err != nil {
 			log.Fatalln("Failed to connect to database: ", err)
 		}
-		defer conn.Close(context.Background())
+		defer dbpool.Close()
 
-		server := httptest.NewServer(lib.Server(conn))
+		server := httptest.NewServer(lib.Server(dbpool))
 		defer server.Close()
 
 		var testCases = []struct {

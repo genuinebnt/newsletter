@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Form struct {
@@ -16,7 +16,7 @@ type Form struct {
 }
 
 func Subscribe(c *gin.Context) {
-	db := c.MustGet("db").(*pgx.Conn)
+	db := c.MustGet("db").(*pgxpool.Pool)
 
 	var form Form
 	_ = c.Bind(&form)

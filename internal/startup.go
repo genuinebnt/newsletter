@@ -4,14 +4,14 @@ import (
 	"genuinebnt/newsletter/api"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func Server(conn *pgx.Conn) *gin.Engine {
+func Server(dbpool *pgxpool.Pool) *gin.Engine {
 	server := gin.Default()
 
 	server.Use(func(c *gin.Context) {
-		c.Set("db", conn)
+		c.Set("db", dbpool)
 		c.Next()
 	})
 
