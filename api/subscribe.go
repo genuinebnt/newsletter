@@ -2,7 +2,7 @@ package api
 
 import (
 	"context"
-	"log"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -23,9 +23,12 @@ func Subscribe(c *gin.Context) {
 
 	id, err := uuid.NewRandom()
 	if err != nil {
-		log.Println(err)
+		c.Status(http.StatusInternalServerError)
 		return
 	}
+
 	_, err = db.Exec(context.Background(), "INSERT INTO subscriptions (id, email, name, subscribed_at) VALUES ($1, $2, $3, $4)", id, form.Email, form.Name, time.Now().UTC())
-	log.Println(err)
+	if err != nil {
+		c.Status(http.StatusInternalServerError)
+	}
 }
