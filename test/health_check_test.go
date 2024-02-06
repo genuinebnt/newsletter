@@ -4,28 +4,80 @@ import (
 	"context"
 	"genuinebnt/newsletter/config"
 	lib "genuinebnt/newsletter/internal"
-	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestHealthCheck(t *testing.T) {
+func spawnDB(t testing.TB) *pgxpool.Pool {
+	t.Helper()
 	config, err := config.GetConfiguration()
 	if err != nil {
-		log.Fatalln("Failed to read configuration: ", err)
+		t.Fatal("Failed to read configuration: ", err)
 	}
 
-	connectionString := config.Database.ConnectionString()
-
-	dbpool, err := pgxpool.New(context.Background(), connectionString)
+	name, err := uuid.NewRandom()
 	if err != nil {
-		log.Fatalln("Failed to connect to database: ", err)
+		t.Fatal(err)
 	}
+
+	config.Database.DatabaseName = name.String()
+	return configureDatabase(t, config)
+}
+
+func configureDatabase(t testing.TB, config *config.Config) *pgxpool.Pool {
+	t.Helper()
+	connectionString := config.Database.ConnnectionStringWithoutDB()
+
+	conn, err := pgx.Connect(context.Background(), connectionString)
+	if err != nil {
+		t.Fatal("Failed to connect to database: ", err)
+	}
+	defer conn.Close(context.Background())
+
+	_, err = conn.Exec(context.Background(), "CREATE DATABASE \""+config.Database.DatabaseName+"\"")
+	if err != nil {
+		t.Fatal("Failed to create database: ", err)
+	}
+
+	dbpool, err := pgxpool.New(context.Background(), config.Database.ConnectionString())
+	if err != nil {
+		t.Fatal("Failed to connect to database: ", err)
+	}
+
+	dir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	migrationsDir := filepath.Join(dir, "../migrations")
+
+	//var embedMigrations embed.FS
+	goose.SetBaseFS(nil)
+
+	db := stdlib.OpenDBFromPool(dbpool)
+	if err := goose.SetDialect("postgres"); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := goose.Up(db, migrationsDir); err != nil {
+		t.Fatal(err)
+	}
+
+	return dbpool
+}
+
+func TestHealthCheck(t *testing.T) {
+	dbpool := spawnDB(t)
 	defer dbpool.Close()
 
 	server := httptest.NewServer(lib.Server(dbpool))
@@ -33,7 +85,7 @@ func TestHealthCheck(t *testing.T) {
 
 	resp, err := http.Get(server.URL + "/health_check")
 	if err != nil {
-		log.Fatalln("Failed to execute http request with err", err)
+		t.Fatal("Failed to execute http request with err", err)
 	}
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -42,17 +94,7 @@ func TestHealthCheck(t *testing.T) {
 
 func TestSubscribe(t *testing.T) {
 	t.Run("Subscriber returns 200 for a valid form data", func(t *testing.T) {
-		config, err := config.GetConfiguration()
-		if err != nil {
-			log.Fatalln("Failed to read configuration: ", err)
-		}
-
-		connectionString := config.Database.ConnectionString()
-
-		dbpool, err := pgxpool.New(context.Background(), connectionString)
-		if err != nil {
-			log.Fatalln("Failed to connect to database: ", err)
-		}
+		dbpool := spawnDB(t)
 		defer dbpool.Close()
 
 		server := httptest.NewServer(lib.Server(dbpool))
@@ -61,14 +103,14 @@ func TestSubscribe(t *testing.T) {
 		body := "name=genuine%20basil%20nt&email=genuinebnt%40gmail.com"
 		resp, err := http.Post(server.URL+"/subscriptions", "application/x-www-form-urlencoded", strings.NewReader(body))
 		if err != nil {
-			log.Fatalln("Failed to execute http request with err", err)
+			t.Fatal("Failed to execute http request with err", err)
 		}
 
 		var name string
 		var email string
 		err = dbpool.QueryRow(context.Background(), "SELECT email, name from subscriptions;").Scan(&email, &name)
 		if err != nil {
-			log.Fatalln("Failed to fetch subscriptions: ", err)
+			t.Fatal("Failed to fetch subscriptions: ", err)
 		}
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -78,17 +120,7 @@ func TestSubscribe(t *testing.T) {
 	})
 
 	t.Run("Subscriber returns 400 when data is missing", func(t *testing.T) {
-		config, err := config.GetConfiguration()
-		if err != nil {
-			log.Fatalln("Failed to read configuration: ", err)
-		}
-
-		connectionString := config.Database.ConnectionString()
-
-		dbpool, err := pgxpool.New(context.Background(), connectionString)
-		if err != nil {
-			log.Fatalln("Failed to connect to database: ", err)
-		}
+		dbpool := spawnDB(t)
 		defer dbpool.Close()
 
 		server := httptest.NewServer(lib.Server(dbpool))
@@ -115,7 +147,7 @@ func TestSubscribe(t *testing.T) {
 		for _, testCase := range testCases {
 			resp, err := http.Post(server.URL+"/subscriptions", "application/x-www-form-urlencoded", strings.NewReader(testCase.input))
 			if err != nil {
-				log.Fatalln("Failed to execute http request with err", err)
+				t.Fatal("Failed to execute http request with err", err)
 			}
 
 			assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "The API did not fail with 400 status code when payload was "+testCase.err)

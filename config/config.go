@@ -39,3 +39,9 @@ func (settings DatabaseSettings) ConnectionString() string {
 		"postgres://%s:%s@%s:%d/%s", settings.Username, settings.Password, settings.Host, settings.Port, settings.DatabaseName,
 	)
 }
+
+func (settings DatabaseSettings) ConnnectionStringWithoutDB() string {
+	return fmt.Sprintf(
+		"postgres://%s:%s@%s:%d", settings.Username, settings.Password, settings.Host, settings.Port,
+	)
+}
