@@ -2,13 +2,17 @@ package lib
 
 import (
 	"genuinebnt/newsletter/api"
+	"genuinebnt/newsletter/middleware"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func Server(dbpool *pgxpool.Pool) *gin.Engine {
-	server := gin.Default()
+
+	server := gin.New()
+	server.Use(middleware.DefaultStructuredLogger())
+	server.Use(gin.Recovery())
 
 	server.Use(func(c *gin.Context) {
 		c.Set("db", dbpool)

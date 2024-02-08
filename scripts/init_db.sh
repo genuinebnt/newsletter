@@ -35,14 +35,14 @@ done
 
 echo >&2 "Postgres is up and running on port ${DB_PORT} - running migrations now"
 
-GOOSE_DRIVER=postgres
-GOOSE_DBSTRING=postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}
-export GOOSE_DRIVER
-export GOOSE_DBSTRING
+# GOOSE_DRIVER=postgres
+# GOOSE_DBSTRING=postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}
+# export GOOSE_DRIVER
+# export GOOSE_DBSTRING
 
-mkdir -p migrations/
-cd migrations/
-#goose create create_subscription_table sql
-goose up
-echo >&2 "Postgres has been migrated, ready to go!"
-cd ..
+# mkdir -p migrations/
+# cd migrations/
+# #goose create create_subscription_table sql
+# goose up
+# echo >&2 "Postgres has been migrated, ready to go!"
+# cd ..
