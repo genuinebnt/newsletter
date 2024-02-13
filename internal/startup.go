@@ -11,6 +11,7 @@ import (
 func Server(dbpool *pgxpool.Pool) *gin.Engine {
 
 	server := gin.New()
+	server.Use(middleware.RequestId())
 	server.Use(middleware.DefaultStructuredLogger())
 	server.Use(gin.Recovery())
 

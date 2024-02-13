@@ -4,17 +4,18 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 
 	"github.com/gin-gonic/gin"
 )
 
 func DefaultStructuredLogger() gin.HandlerFunc {
-	return StructuredLogger(&log.Logger)
+	return StructuredLogger()
 }
 
-func StructuredLogger(logger *zerolog.Logger) gin.HandlerFunc {
+func StructuredLogger() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		logger := c.MustGet("logger").(*zerolog.Logger)
+
 		start := time.Now()
 		path := c.Request.URL.Path
 		raw := c.Request.URL.RawQuery
