@@ -3,13 +3,15 @@ package config
 import (
 	_ "embed"
 	"fmt"
+	"os"
+	"path/filepath"
 
-	"gopkg.in/yaml.v3"
+	"github.com/spf13/viper"
 )
 
-type Config struct {
-	Database        DatabaseSettings `yaml:"database"`
-	ApplicationPort int              `yaml:"application_port"`
+type Application struct {
+	Port int    `yaml:"port"`
+	Host string `yaml:"host"`
 }
 
 type DatabaseSettings struct {
@@ -20,15 +22,44 @@ type DatabaseSettings struct {
 	DatabaseName string `yaml:"database_name"`
 }
 
-//go:embed config.yaml
-var configFile []byte
+type Config struct {
+	Application Application      `yaml:"application"`
+	Database    DatabaseSettings `yaml:"database"`
+}
 
 func GetConfiguration() (*Config, error) {
+	appEnv := os.Getenv("APP_ENVIRONMENT")
+	if appEnv != "production" && appEnv != "" {
+		return nil, fmt.Errorf("wrong app environment. use either local or production")
+	} else if appEnv == "" {
+		appEnv = "local"
+	}
+
+	configFile := appEnv + ".yaml"
+
+	currDir, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current directory: %v", err)
+	}
+
+	configDir := filepath.Join(currDir, "config")
+
+	v := viper.New()
+	v.SetConfigFile(filepath.Join(configDir, "base.yaml"))
+
+	if err := v.ReadInConfig(); err != nil {
+		return nil, fmt.Errorf("failed to read config files: %v", err)
+	}
+
+	v.SetConfigFile(filepath.Join(configDir, configFile))
+	if err := v.MergeInConfig(); err != nil {
+		return nil, fmt.Errorf("failed to merge config file: %v", err)
+	}
+
 	config := &Config{}
 
-	err := yaml.Unmarshal(configFile, config)
-	if err != nil {
-		return nil, err
+	if err := v.Unmarshal(config); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal config: %v", err)
 	}
 
 	return config, nil
