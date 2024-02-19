@@ -42,7 +42,7 @@ func GetConfiguration() (*Config, error) {
 		return nil, fmt.Errorf("failed to get current directory: %v", err)
 	}
 
-	configDir := filepath.Join(currDir, "config")
+	configDir := filepath.Join(currDir, "configuration")
 
 	v := viper.New()
 	v.SetConfigFile(filepath.Join(configDir, "base.yaml"))
