@@ -3,6 +3,7 @@ package config
 import (
 	_ "embed"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -28,6 +29,9 @@ type Config struct {
 }
 
 func GetConfiguration() (*Config, error) {
+	viper.SetEnvPrefix("APP_")
+	viper.AutomaticEnv()
+
 	appEnv := os.Getenv("APP_ENVIRONMENT")
 	if appEnv != "production" && appEnv != "" {
 		return nil, fmt.Errorf("wrong app environment. use either local or production")
@@ -45,6 +49,7 @@ func GetConfiguration() (*Config, error) {
 	configDir := filepath.Join(currDir, "configuration")
 
 	v := viper.New()
+
 	v.SetConfigFile(filepath.Join(configDir, "base.yaml"))
 
 	if err := v.ReadInConfig(); err != nil {
@@ -61,6 +66,8 @@ func GetConfiguration() (*Config, error) {
 	if err := v.Unmarshal(config); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %v", err)
 	}
+
+	log.Println(config.Application.Host, config.Application.Port, config.Database.DatabaseName, config.Database.Host, config.Database.Port, config.Database.Username, config.Database.Password)
 
 	return config, nil
 }
