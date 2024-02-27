@@ -31,7 +31,7 @@ func spawnDB(t testing.TB) *pgxpool.Pool {
 		t.Fatal(err)
 	}
 
-	config.Database.DatabaseName = name.String()
+	config.Database.Name = name.String()
 	return configureDatabase(t, config)
 }
 
@@ -45,7 +45,7 @@ func configureDatabase(t testing.TB, config *config.Config) *pgxpool.Pool {
 	}
 	defer conn.Close(context.Background())
 
-	_, err = conn.Exec(context.Background(), "CREATE DATABASE \""+config.Database.DatabaseName+"\"")
+	_, err = conn.Exec(context.Background(), "CREATE DATABASE \""+config.Database.Name+"\"")
 	if err != nil {
 		t.Fatal("Failed to create database: ", err)
 	}
